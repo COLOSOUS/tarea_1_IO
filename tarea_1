@@ -1,0 +1,82 @@
+{
+states = ["1VS" "1VR" "1D" "2VS" "2VR" "2D"]
+p_fast = 0.6
+p_slow = 0.95
+
+q_fast = 0.6
+q_slow = 0.4
+
+function calculo_matrices(p_fast, p_slow, q_fast, q_slow)
+    global utilidades, trans_s, trans_f
+    # Utilidades: prob de ganar el game
+        utilidades =np.array[
+                p_slow*q_slow   0       0       p_slow*q_slow           0       0;
+                p_fast*q_fast   0       0       p_fast*q_fast           0       0
+                ]
+
+        #Matriz de transición
+        trans_s = [
+                0               0                       p_slow*(1-q_slow)       1-p_slow        0               0;
+                0               0                       p_slow*q_slow           0               1-p_slow        0;
+                p_slow*q_slow   p_slow*(1-q_slow)       0                       0               0               1-p_slow;
+                0               0                       (1-p_slow)+p_slow*(1-q_slow) 0          0               0;
+                0               0                       p_slow*q_slow           0               0               0;
+                p_slow*q_slow   (1-p_slow)+p_slow*(1-q_slow)    0               0               0               0;
+                ]
+
+        trans_f = [
+                0               0                       p_fast*(1-q_fast)       1-p_fast        0               0;
+                0               0                       p_fast*q_fast           0               1-p_fast        0;
+                p_fast*q_fast   p_fast*(1-q_fast)       0                       0               0               1-p_fast;
+                0               0                       (1-p_fast)+p_fast*(1-q_fast) 0          0               0;
+                0               0                       p_fast*q_fast           0               0               0;
+                p_fast*q_fast   (1-p_fast)+p_fast*(1-q_fast)    0               0               0               0;
+                ]
+        return utilidades, trans_s, trans_f
+end
+
+function value_iteration(states, p_fast, q_fast, p_slow, q_slow, N)
+        global next_j, politica
+        # Creamos vectores para guardar información
+        J_ini = zeros(1,6)
+        next_j = zeros(1,6) # modificando
+        politica = ["A" "B" "C" "D" "E" "F"] # modificando
+        calculo_matrices(p_fast, p_slow, q_fast, q_slow)
+        for m = 1:N
+                #println("Iteración ",string(m))
+                J_ini = deepcopy(next_j) # para evitar redundancia de variables
+                for i = 1:length(states)
+                        next_j[i] = max(utilidades[1,i] + (J_ini*trans_s[i,:])[1], utilidades[2,i] + (J_ini*trans_f[i,:])[1])
+                        if m == N
+                                if utilidades[1,i] + (J_ini*trans_s[i,:])[1] > utilidades[2,i] + (J_ini*trans_f[i,:])[1]
+                                        politica[i] = "Slow"
+                                else
+                                        politica[i] = "Fast"
+                                end
+                        end
+                end
+                #println(next_j)
+                if m == N
+                        println(next_j)
+                        println(politica)
+                        return next_j, politica
+                end
+        end
+end
+# Número de iteraciones
+N = 100
+
+
+estado_a_evaluar = 1 # 1 es 1VS
+prob_first_service = zeros(1,10)
+
+for k = 1:10
+        parametro = 0.1*k # P_fast
+        value_iteration(states, parametro, q_fast, p_slow, q_slow, N)
+        prob_first_service[k] = next_j[estado_a_evaluar]
+end
+
+p_fast_plot = [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
+plot(p_fast_plot', prob_first_service', title = "Prob de Ganar en 1VS vs variaciones de p_fast", lw = 3,
+ yaxis = 0:1, xlabel = "P_Fast: probabilidad de que entre el primer servicio", label = ["Prob Ganar Game"])
+ }
